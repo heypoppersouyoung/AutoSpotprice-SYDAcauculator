@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>慢盈OY動態停損計算器（慢盈BUFFER版 - 全合約支援）</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1200px; margin: 40px auto; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .main-container { display: flex; gap: 16px; }
+        .calculator { flex: 1; background: rgba(255,255,255,0.1); padding: 18px; border-radius: 16px; backdrop-filter: blur(10px); box-shadow: 0 6px 24px rgba(0,0,0,0.3); }
+        .sidebar { flex: 0 0 320px; background: rgba(0,255,136,0.1); padding: 16px; border-radius: 16px; border-left: 4px solid #00ff88; }
+        h1 { text-align: center; margin-bottom: 14px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); font-size: 22px; }
+        h2 { color: #00ff88; margin-top: 0; font-size: 17px; }
+        .input-group { display: flex; align-items: center; margin: 5px 0; gap: 4px; }
+        .input-group label { min-width: 80px; font-size: 13px; }
+        input, select { padding: 6px; border: none; border-radius: 6px; font-size: 13px; background: rgba(255,255,255,0.9); width: 100px; }
+        button { background: linear-gradient(45deg, #ff6b6b, #feca57); border: none; padding: 8px 16px; border-radius: 10px; color: white; font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s; margin: 10px 0; width: 100%; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
+        .result { background: rgba(0,255,136,0.3); padding: 14px; border-radius: 12px; margin-top: 10px; border-left: 4px solid #00ff88; }
+        .stop-price { font-size: 22px; font-weight: bold; color: #00ff88; background: rgba(0,255,136,0.3); padding: 6px; border-radius: 8px; display: inline-block; }
+        .risk-table { background: rgba(255,255,255,0.2); padding: 8px; border-radius: 8px; margin: 6px 0; overflow-x: auto; }
+        .risk-table table { width: 100%; border-collapse: collapse; color: white; font-size: 12px; }
+        .risk-table th, .risk-table td { padding: 4px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .risk-table th { text-align: left; }
+        .formula { background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px; font-family: monospace; font-size: 11px; }
+
+        .visual-container {
+            margin-top: 8px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .visual-info {
+            font-size: 13px;
+            line-height: 1.4;
+            flex: 1;
+        }
+        .visual-info span {
+            display: block;
+        }
+        .visual-actions {
+            margin-top: 4px;
+        }
+        .reset-btn {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 3px 6px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.6);
+            background: rgba(0,0,0,0.4);
+            color: #ffeb3b;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .reset-btn:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        .r-targets { margin-top: 4px; }
+        .r-tag {
+            display: inline-block;
+            padding: 2px 5px;
+            margin: 1px 2px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(0,0,0,0.3);
+            font-size: 10px;
+            cursor: pointer;
+            color: #fff;
+        }
+        .r-tag.active {
+            background: #4fc3f7;
+            color: #222;
+            border-color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        .buffer-table { background: rgba(255,255,255,0.2); padding: 8px; border-radius: 8px; margin: 6px 0; font-size: 12px; }
+        .buffer-table table { width: 100%; border-collapse: collapse; }
+        .buffer-table th { background: rgba(0,255,136,0.3); padding: 6px; text-align: left; }
+        .buffer-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .buffer-recommend { background: #ffeb3b; color: #333; padding: 6px; border-radius: 6px; font-weight: bold; text-align: center; margin: 6px 0; font-size: 12px; }
+        .sidebar-tip { background: rgba(255,255,255,0.1); padding: 6px; border-radius: 6px; margin: 4px 0; font-size: 12px; }
+
+        .choice-group { display: flex; gap: 2px; flex-wrap: wrap; }
+        .choice-btn {
+            padding: 3px 6px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+            cursor: pointer;
+            font-size: 11px;
+            line-height: 1.1;
+            white-space: nowrap;
+            flex: 0 0 24%;
+        }
+        .choice-btn.active {
+            background: #00ff88;
+            color: #222;
+            border-color: #00ff88;
+            font-weight: bold;
+        }
+
+        textarea#key_levels {
+            flex: 1;
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 6px;
+            border: none;
+            resize: vertical;
+            min-height: 60px;
+            max-height: 160px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="calculator">
+            <h1>🎯 慢盈數據教育 OY 動態停損計算器</h1>
+            
+            <div class="input-group">
+                <label>合約:</label>
+                <select id="contract" onchange="updatePointValue()">
+                    <option value="MES">MES ($5/點)</option>
+                    <option value="ES">ES ($50/點)</option>
+                    <option value="MNQ">MNQ ($2/點)</option>
+                    <option value="NQ">NQ ($20/點)</option>
+                </select>
+            </div>
+
+            <!-- Finnhub 即時現價 -->
+            <div class="input-group">
+                <label>現價:</label>
+                <input type="number" id="price" value="66" step="0.25" style="flex:1;">
+                <span id="live_price_status" style="color:#ff6b6b; font-size:12px; margin-left:4px;">離線</span>
+                <button type="button" class="choice-btn" style="flex:0 0 auto;" onclick="toggleFinnhub()" id="fh_btn">🟢 啟即時價</button>
+            </div>
+            
+            <div class="input-group">
+                <label>ATR (點):</label>
+                <input type="number" id="atr" value="6.0" step="0.1">
+            </div>
+            
+            <div class="input-group">
+                <label>R 值 ($):</label>
+                <div id="risk_group" class="choice-group">
+                    <button type="button" class="choice-btn" onclick="setRisk(100, this)">100</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(150, this)">150</button>
+                    <button type="button" class="choice-btn active" onclick="setRisk(200, this)">200</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(250, this)">250</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(300, this)">300</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(350, this)">350</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(400, this)">400</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(450, this)">450</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(500, this)">500</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(550, this)">550</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(600, this)">600</button>
+                    <button type="button" class="choice-btn" onclick="setRisk(650, this)">650</button>
+                </div>
+                <input type="hidden" id="risk_dollar" value="200">
+            </div>
+            
+            <div class="input-group">
+                <label>GEX 區間:</label>
+                <div id="gex_zone_group" class="choice-group">
+                    <button type="button" class="choice-btn active" data-value="pos" onclick="setGexZone('pos', this)">正GEX</button>
+                    <button type="button" class="choice-btn" data-value="trans" onclick="setGexZone('trans', this)">Transition</button>
+                    <button type="button" class="choice-btn" data-value="neg" onclick="setGexZone('neg', this)">負GEX</button>
+                </div>
+                <input type="hidden" id="gex_zone" value="pos">
+            </div>
+            
+            <div class="input-group">
+                <label>交易類型:</label>
+                <div id="trade_type_group" class="choice-group">
+                    <button type="button" class="choice-btn active" data-value="revert" onclick="setTradeType('revert', this)">反轉</button>
+                    <button type="button" class="choice-btn" data-value="breakout" onclick="setTradeType('breakout', this)">突破</button>
+                </div>
+                <input type="hidden" id="trade_type" value="revert">
+            </div>
+            
+            <div class="input-group">
+                <label>方向:</label>
+                <div id="direction_group" class="choice-group">
+                    <button type="button" class="choice-btn active" data-value="long" onclick="setDirection('long', this)">多</button>
+                    <button type="button" class="choice-btn" data-value="short" onclick="setDirection('short', this)">空</button>
+                </div>
+                <input type="hidden" id="direction" value="long">
+            </div>
+            
+            <div class="input-group">
+                <label>Buffer:</label>
+                <div id="buffer_group" class="choice-group">
+                    <button type="button" class="choice-btn" onclick="setBuffer(0, this)">-3</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(0, this)">-2</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(0, this)">-1</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(0, this)">0</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(1, this)">1</button>
+                    <button type="button" class="choice-btn active" onclick="setBuffer(2, this)">2</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(3, this)">3</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(4, this)">4</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(5, this)">5</button>
+                    <button type="button" class="choice-btn" onclick="setBuffer(6, this)">6</button>
+                </div>
+                <input type="hidden" id="buffer" value="2">
+            </div>
+
+            <div class="input-group">
+                <label style="align-self:flex-start;">關鍵價位:</label>
+                <textarea id="key_levels" rows="3"
+                    placeholder="例如：
+4850 核心阻力
+4805 上方區間中軸
+4760 強支撐"></textarea>
+            </div>
+            
+            <button onclick="calculateSL()">🚀 計算停損 & 倉位</button>
+            
+            <div id="result" class="result" style="display: none;">
+                <h3 style="margin-top:0;font-size:15px;">📊 精準風控結果</h3>
+                <div id="result-content"></div>
+                <div id="risk-table" class="risk-table"></div>
+
+                <div class="visual-container">
+                    <canvas id="price-visual" width="160" height="240"></canvas>
+                    <div class="visual-info">
+                        <div id="visual-info-text"></div>
+                        <div class="r-targets" id="r-targets-list">
+                            <span>🎯 目標R倍數:</span>
+                            <button type="button" class="r-tag" onclick="setTargetR(0.5)">0.5R</button>
+                            <button type="button" class="r-tag active" onclick="setTargetR(1)">1R</button>
+                            <button type="button" class="r-tag" onclick="setTargetR(1.5)">1.5R</button>
+                            <button type="button" class="r-tag" onclick="setTargetR(2)">2R</button>
+                            <button type="button" class="r-tag" onclick="setTargetR(3)">3R</button>
+                        </div>
+                        <div class="visual-actions">
+                            <button type="button" class="reset-btn" onclick="resetTpToOneR()">重置 TP 回 1:1</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="formula" class="formula"></div>
+                <div id="key-levels-table" class="risk-table"></div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <h2>💡 BUFFER 慢盈建議</h2>
+            
+            <div class="buffer-recommend" id="buffer-recommend">
+                輸入參數後即時建議...
+            </div>
+            
+            <div class="buffer-table">
+                <table>
+                    <tr><th>📅 市場狀況</th><th>建議 Buffer</th></tr>
+                    <tr><td>正常交易日</td><td><strong>0-2 點</strong></td></tr>
+                    <tr><td>FOMC/ER/OPEX/數據公布</td><td><strong>3-5 點</strong></td></tr>
+                    <tr><td>開盤時段</td><td><strong>2-4 點</strong></td></tr>
+                    <tr><td>GEX關鍵位</td><td><strong>1-3 點</strong></td></tr>
+                    <tr><td>月季末周五/高波日</td><td><strong>4-6 點</strong></td></tr>
+                </table>
+            </div>
+            
+            <div class="sidebar-tip">
+                💡 <strong>快速規則：</strong><br>
+                • 周一～周四：<strong>Buffer=2</strong><br>
+                • 月季末周五/開盤時段/OPEX/高波日：<strong>Buffer=4</strong><br>
+                • FOMC/重大數據事件：<strong>Buffer=6</strong>
+            </div>
+            
+            <div class="sidebar-tip">
+                🎯 <strong>全合約支援：</strong><br>
+                MES($5) • ES($50) • <strong>MNQ($2)</strong> • <strong>NQ($20)</strong><br>
+                <em>NQ納指高波動更需精準風控！</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pointValue = 5;
+        let lastState = null;
+        let currentRR = 1.0;
+        let draggingTp = false;
+        let tpHitRange = 6;
+        let canvasOffsetTop = 0;
+        let canvasOffsetLeft = 0;
+        let cachedScale = null;
+        let keyLevels = [];
+
+        function updatePointValue() {
+            const contract = document.getElementById('contract').value;
+            if (contract === 'MES') pointValue = 5;
+            else if (contract === 'ES') pointValue = 50;
+            else if (contract === 'MNQ') pointValue = 2;
+            else if (contract === 'NQ') pointValue = 20;
+            updateBufferRecommendation();
+        }
+
+        function setActiveButton(groupId, btn) {
+            const group = document.getElementById(groupId);
+            if (!group) return;
+            Array.from(group.querySelectorAll('.choice-btn')).forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function setRisk(value, btn) {
+            document.getElementById('risk_dollar').value = value;
+            setActiveButton('risk_group', btn);
+        }
+
+        function setGexZone(value, btn) {
+            document.getElementById('gex_zone').value = value;
+            setActiveButton('gex_zone_group', btn);
+            updateBufferRecommendation();
+        }
+
+        function setTradeType(value, btn) {
+            document.getElementById('trade_type').value = value;
+            setActiveButton('trade_type_group', btn);
+            updateBufferRecommendation();
+        }
+
+        function setDirection(value, btn) {
+            document.getElementById('direction').value = value;
+            setActiveButton('direction_group', btn);
+        }
+
+        function setBuffer(value, btn) {
+            document.getElementById('buffer').value = value;
+            setActiveButton('buffer_group', btn);
+            updateBufferRecommendation();
+        }
+
+        function updateBufferRecommendation() {
+            const atr = parseFloat(document.getElementById('atr').value) || 12;
+            const gexZone = document.getElementById('gex_zone').value;
+            let recommendation = '建議：';
+            if (gexZone === 'pos') recommendation += ' <strong>1-2點</strong> (正GEX穩定)';
+            else if (gexZone === 'neg') recommendation += ' <strong>3-5點</strong> (負GEX高波)';
+            else recommendation += ' <strong>2-4點</strong> (Transition不確定)';
+            recommendation += ` | 動態：0.25×ATR(${Math.round(atr*0.25*10)/10}點)`;
+            document.getElementById('buffer-recommend').innerHTML = recommendation;
+        }
+
+        function calculateSL() {
+            const price = parseFloat(document.getElementById('price').value);
+            const atr = parseFloat(document.getElementById('atr').value);
+            const riskDollar = parseFloat(document.getElementById('risk_dollar').value);
+            const gexZone = document.getElementById('gex_zone').value;
+            const tradeType = document.getElementById('trade_type').value;
+            const direction = document.getElementById('direction').value;
+            const contract = document.getElementById('contract').value;
+            const buffer = parseFloat(document.getElementById('buffer').value) || 0;
+
+            if (!isFinite(price) || !isFinite(atr) || !isFinite(riskDollar) || atr <= 0 || riskDollar <= 0) return;
+
+            const riskMultipliers = {
+                revert: { pos: 0.8, trans: 1.0, neg: 1.2 },
+                breakout: { pos: 1.0, trans: 1.2, neg: 1.5 }
+            };
+
+            const kRisk = riskMultipliers[tradeType][gexZone];
+            const slDistance = Math.round((kRisk * atr + buffer) * 10) / 10;
+
+            const contracts = Math.max(1, Math.floor(riskDollar / (slDistance * pointValue)));
+            const actualRisk = contracts * slDistance * pointValue;
+            const perContractRisk = slDistance * pointValue;
+
+            const slPrice = direction === 'short' ? price + slDistance : price - slDistance;
+
+            currentRR = 1.0;
+            const tpDistance = slDistance * currentRR;
+            const tpPrice = direction === 'long'
+                ? price + tpDistance
+                : price - tpDistance;
+
+            document.getElementById('result-content').innerHTML = `
+                <p><strong>停損距離:</strong> <span style="color: #00ff88; font-size: 18px;">${slDistance} 點</span></p>
+                <p><strong>確切停損價:</strong> <span class="stop-price">${slPrice.toFixed(1)}</span></p>
+                <p><strong>建議倉位:</strong> <span style="color: #00ff88; font-size: 18px;">${contracts} ${contract} 合約</span></p>
+                <p><strong>1:1 目標價 (初始):</strong> <span style="color: #ffeb3b; font-size: 16px;">${tpPrice.toFixed(1)}</span></p>
+            `;
+
+            document.getElementById('risk-table').innerHTML = `
+                <table>
+                    <tr><th>風險項目</th><th>金額 ($)</th></tr>
+                    <tr><td>你的 R 值設定</td><td><strong>${riskDollar}</strong></td></tr>
+                    <tr><td>實際總風險</td><td style="color: ${actualRisk <= riskDollar ? '#00ff88' : '#ff6b6b'}">${actualRisk.toFixed(0)}</td></tr>
+                    <tr><td>每合約風險</td><td>$${perContractRisk.toFixed(0)} (${contract})</td></tr>
+                </table>
+            `;
+
+            document.getElementById('formula').innerHTML = `
+                💡 公式: ${kRisk.toFixed(1)} × ATR(${atr}) + Buffer(${buffer}) = ${slDistance}點<br>
+                📍 確切停損 = 進場價 ${direction === 'short' ? '+' : '-' } ${slDistance}點 = ${slPrice.toFixed(1)}<br>
+                🎯 1:1 目標價(初始) = 進場價 ${direction === 'long' ? '+' : '-' } ${tpDistance}點 = ${tpPrice.toFixed(1)}<br>
+                💰 倉位: ${riskDollar} ÷ (${slDistance} × $${pointValue}) = ${contracts}合約<br>
+                🎯 目前RR = 1:${currentRR.toFixed(2)}
+            `;
+
+            updateVisualInfo(price, slPrice, tpPrice, slDistance, perContractRisk, currentRR);
+
+            lastState = { entryPrice: price, slPrice, tpPrice, slDistance, direction, perContractRisk };
+
+            parseKeyLevels(price, slDistance);
+            updateKeyLevelsTable(price, slDistance);
+
+            drawPriceVisual();
+            resetRTagActive(1);
+
+            document.getElementById('result').style.display = 'block';
+        }
+
+        function pctMove(from, to) {
+            if (!isFinite(from) || from === 0) return 0;
+            return ((to - from) / from) * 100;
+        }
+
+        function updateVisualInfo(entryPrice, slPrice, tpPrice, slDistance, perContractRisk, rr) {
+            const visualInfoDiv = document.getElementById('visual-info-text');
+            const rewardDistance = Math.abs(tpPrice - entryPrice);
+            const rewardDollar = rewardDistance * pointValue;
+            const slPct = pctMove(entryPrice, slPrice);
+            const tpPct = pctMove(entryPrice, tpPrice);
+
+            visualInfoDiv.innerHTML = `
+                <span><strong>Entry:</strong> ${entryPrice.toFixed(1)}</span>
+                <span><strong>SL:</strong> ${slPrice.toFixed(1)} (${slDistance.toFixed(1)} pts, ${slPct >= 0 ? '+' : ''}${slPct.toFixed(2)}%)</span>
+                <span><strong>TP:</strong> ${tpPrice.toFixed(1)} (${rewardDistance.toFixed(1)} pts, ${tpPct >= 0 ? '+' : ''}${tpPct.toFixed(2)}%)</span>
+                <span><strong>Risk /合約:</strong> $${(slDistance * pointValue).toFixed(0)}</span>
+                <span><strong>Reward /合約:</strong> $${rewardDollar.toFixed(0)}</span>
+                <span><strong>RR:</strong> 1 : ${rr.toFixed(2)}</span>
+                <span><strong>目標R倍數:</strong> ${rr.toFixed(2)} R</span>
+                <span style="margin-top:4px; opacity:0.8;">提示：拖拉藍色 TP 線調整RR，或點擊R標籤/重置回 1:1</span>
+            `;
+        }
+
+        function parseKeyLevels(entryPrice, slDistance) {
+            keyLevels = [];
+            const raw = (document.getElementById('key_levels').value || '').trim();
+            if (!raw) return;
+            const lines = raw.split('\n');
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                const match = line.match(/[-+]?\d+(\.\d+)?/);
+                if (!match) continue;
+                const price = parseFloat(match[0]);
+                if (!isFinite(price)) continue;
+                const label = line.replace(match[0], '').trim() || '';
+                keyLevels.push({ price, label });
+            }
+        }
+
+        function updateKeyLevelsTable(entryPrice, slDistance) {
+            const container = document.getElementById('key-levels-table');
+            if (!container || !keyLevels.length || !isFinite(entryPrice) || !isFinite(slDistance) || slDistance <= 0) {
+                if (container) container.innerHTML = '';
+                return;
+            }
+            let html = '<table><tr><th>標籤</th><th>價格</th><th>距Entry(pts)</th><th>距Entry(%)</th><th>若為TP之R倍數</th></tr>';
+            for (const lvl of keyLevels) {
+                const distPts = lvl.price - entryPrice;
+                const distAbs = Math.abs(distPts);
+                const distPct = entryPrice !== 0 ? (distPts / entryPrice) * 100 : 0;
+                const rMultiple = distAbs / slDistance;
+                html += `<tr>
+                    <td style="text-align:left;">${lvl.label || '-'}</td>
+                    <td>${lvl.price.toFixed(1)}</td>
+                    <td>${distPts.toFixed(1)}</td>
+                    <td>${distPct.toFixed(2)}%</td>
+                    <td>${rMultiple.toFixed(2)} R</td>
+                </tr>`;
+            }
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function resetRTagActive(targetR) {
+            const tags = document.querySelectorAll('.r-tag');
+            tags.forEach(tag => {
+                tag.classList.remove('active');
+                const text = tag.textContent.replace('R', '');
+                const rVal = parseFloat(text);
+                if (Math.abs(rVal - targetR) < 0.001) tag.classList.add('active');
+            });
+        }
+
+        function setTargetR(r) {
+            if (!lastState || !isFinite(r) || r <= 0) return;
+            currentRR = r;
+            const { entryPrice, slDistance, direction, slPrice, perContractRisk } = lastState;
+            const tpPrice = direction === 'long'
+                ? entryPrice + slDistance * currentRR
+                : entryPrice - slDistance * currentRR;
+            lastState.tpPrice = tpPrice;
+            updateVisualInfo(entryPrice, slPrice, tpPrice, slDistance, perContractRisk, currentRR);
+            drawPriceVisual();
+            resetRTagActive(r);
+        }
+
+        function drawPriceVisual() {
+            const canvas = document.getElementById('price-visual');
+            if (!canvas || !lastState) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const { entryPrice, slPrice, slDistance, direction, perContractRisk } = lastState;
+            let { tpPrice } = lastState;
+            const rewardDistance = slDistance * currentRR;
+            if (direction === 'long') tpPrice = entryPrice + rewardDistance;
+            else tpPrice = entryPrice - rewardDistance;
+            lastState.tpPrice = tpPrice;
+
+            if (!isFinite(entryPrice) || !isFinite(slPrice) || !isFinite(tpPrice) || !isFinite(slDistance) || slDistance <= 0) return;
+
+            const padding = 20;
+            const highPrice = Math.max(entryPrice, slPrice, tpPrice, ...keyLevels.map(k => k.price || -Infinity)) + slDistance * 0.3;
+            const lowPrice  = Math.min(entryPrice, slPrice, tpPrice, ...keyLevels.map(k => k.price || Infinity)) - slDistance * 0.3;
+            const range = highPrice - lowPrice || 1;
+            cachedScale = { lowPrice, highPrice, padding, h };
+
+            function priceToY(p) {
+                const ratio = (p - lowPrice) / range;
+                return h - padding - ratio * (h - padding * 2);
+            }
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.4, padding);
+            ctx.lineTo(w * 0.4, h - padding);
+            ctx.stroke();
+
+            ctx.font = '11px Segoe UI';
+
+            const yEntry = priceToY(entryPrice);
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.15, yEntry);
+            ctx.lineTo(w * 0.9, yEntry);
+            ctx.stroke();
+            ctx.fillStyle = '#00ff88';
+            ctx.fillText('Entry ' + entryPrice.toFixed(1), 4, yEntry - 3);
+
+            const yStop = priceToY(slPrice);
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.15, yStop);
+            ctx.lineTo(w * 0.9, yStop);
+            ctx.stroke();
+            ctx.fillStyle = '#ff6b6b';
+            ctx.fillText('SL ' + slPrice.toFixed(1), 4, yStop - 3);
+
+            const yTp = priceToY(tpPrice);
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.15, yTp);
+            ctx.lineTo(w * 0.9, yTp);
+            ctx.stroke();
+            ctx.fillStyle = '#4fc3f7';
+            ctx.fillText('TP ' + tpPrice.toFixed(1), 4, yTp - 3);
+
+            const slPctCanvas = pctMove(entryPrice, slPrice);
+            const tpPctCanvas = pctMove(entryPrice, tpPrice);
+
+            ctx.strokeStyle = '#ffeb3b';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.78, yEntry);
+            ctx.lineTo(w * 0.82, yEntry);
+            ctx.lineTo(w * 0.82, yStop);
+            ctx.lineTo(w * 0.78, yStop);
+            ctx.stroke();
+
+            const midRiskY = (yEntry + yStop) / 2;
+            ctx.fillStyle = '#ffeb3b';
+            ctx.fillText(slDistance.toFixed(1) + ' pts', w * 0.57, midRiskY - 10);
+            ctx.fillText('$' + perContractRisk.toFixed(0), w * 0.57, midRiskY + 2);
+            ctx.fillText((slPctCanvas >= 0 ? '+' : '') + slPctCanvas.toFixed(2) + '%', w * 0.57, midRiskY + 14);
+
+            const rewardDist = Math.abs(tpPrice - entryPrice);
+            const rewardDollar = rewardDist * pointValue;
+
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.9, yEntry);
+            ctx.lineTo(w * 0.94, yEntry);
+            ctx.lineTo(w * 0.94, yTp);
+            ctx.lineTo(w * 0.9, yTp);
+            ctx.stroke();
+
+            const midRewardY = (yEntry + yTp) / 2;
+            ctx.fillStyle = '#4fc3f7';
+            ctx.fillText(rewardDist.toFixed(1) + ' pts', w * 0.63, midRewardY - 10);
+            ctx.fillText('$' + rewardDollar.toFixed(0), w * 0.63, midRewardY + 2);
+            ctx.fillText((tpPctCanvas >= 0 ? '+' : '') + tpPctCanvas.toFixed(2) + '%', w * 0.63, midRewardY + 14);
+
+            if (Array.isArray(keyLevels) && keyLevels.length) {
+                ctx.font = '10px Segoe UI';
+                for (const lvl of keyLevels) {
+                    if (!isFinite(lvl.price)) continue;
+                    const y = priceToY(lvl.price);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(w * 0.15, y);
+                    ctx.lineTo(w * 0.9, y);
+                    ctx.stroke();
+                    ctx.fillStyle = '#ffffff';
+                    const labelText = (lvl.label ? lvl.label + ' ' : '') + lvl.price.toFixed(1);
+                    ctx.fillText(labelText, w * 0.15 + 4, y - 2);
+                }
+            }
+        }
+
+        function yToPrice(y) {
+            if (!cachedScale) return null;
+            const { lowPrice, highPrice, padding, h } = cachedScale;
+            const usableH = h - padding * 2;
+            const ratio = (h - padding - y) / usableH;
+            return lowPrice + ratio * (highPrice - lowPrice);
+        }
+
+        function resetTpToOneR() {
+            if (!lastState) return;
+            currentRR = 1.0;
+            const { entryPrice, slDistance, direction, slPrice, perContractRisk } = lastState;
+            const tpPrice = direction === 'long' ? entryPrice + slDistance : entryPrice - slDistance;
+            lastState.tpPrice = tpPrice;
+            updateVisualInfo(entryPrice, slPrice, tpPrice, slDistance, perContractRisk, currentRR);
+            drawPriceVisual();
+            resetRTagActive(1);
+        }
+
+        function initCanvasInteraction() {
+            const canvas = document.getElementById('price-visual');
+            if (!canvas) return;
+            const updateOffsets = () => {
+                const r = canvas.getBoundingClientRect();
+                canvasOffsetTop = r.top + window.scrollY;
+                canvasOffsetLeft = r.left + window.scrollX;
+            };
+            updateOffsets();
+
+            canvas.addEventListener('mousedown', function (e) {
+                if (!lastState || !cachedScale) return;
+                const y = e.pageY - canvasOffsetTop;
+                const { tpPrice } = lastState;
+                const h = canvas.height;
+                const padding = cachedScale.padding;
+                const lowPrice = cachedScale.lowPrice;
+                const highPrice = cachedScale.highPrice;
+                const range = highPrice - lowPrice || 1;
+                const yTp = h - padding - ((tpPrice - lowPrice) / range) * (h - padding * 2);
+                if (Math.abs(y - yTp) <= tpHitRange) draggingTp = true;
+            });
+
+            canvas.addEventListener('mousemove', function (e) {
+                if (!lastState || !cachedScale) return;
+                const y = e.pageY - canvasOffsetTop;
+                const { tpPrice } = lastState;
+                const h = canvas.height;
+                const padding = cachedScale.padding;
+                const lowPrice = cachedScale.lowPrice;
+                const highPrice = cachedScale.highPrice;
+                const range = highPrice - lowPrice || 1;
+                const yTp = h - padding - ((tpPrice - lowPrice) / range) * (h - padding * 2);
+
+                if (!draggingTp && Math.abs(y - yTp) <= tpHitRange) canvas.style.cursor = 'pointer';
+                else if (!draggingTp) canvas.style.cursor = 'default';
+                if (!draggingTp) return;
+
+                const priceAtY = yToPrice(y);
+                if (!isFinite(priceAtY)) return;
+                const { entryPrice, slDistance, direction, slPrice, perContractRisk } = lastState;
+                let newTpPrice = priceAtY;
+                if (direction === 'long') {
+                    if (newTpPrice < entryPrice) newTpPrice = entryPrice;
+                    const maxTp = entryPrice + slDistance * 5;
+                    if (newTpPrice > maxTp) newTpPrice = maxTp;
+                } else {
+                    if (newTpPrice > entryPrice) newTpPrice = entryPrice;
+                    const minTp = entryPrice - slDistance * 5;
+                    if (newTpPrice < minTp) newTpPrice = minTp;
+                }
+                const rewardDist = Math.abs(newTpPrice - entryPrice);
+                currentRR = rewardDist / slDistance;
+                lastState.tpPrice = newTpPrice;
+                updateVisualInfo(entryPrice, slPrice, newTpPrice, slDistance, perContractRisk, currentRR);
+                drawPriceVisual();
+                resetRTagActive(-1);
+            });
+
+            canvas.addEventListener('mouseup', function () {
+                draggingTp = false;
+                canvas.style.cursor = 'default';
+            });
+
+            canvas.addEventListener('mouseleave', function () {
+                draggingTp = false;
+                canvas.style.cursor = 'default';
+            });
+
+            window.addEventListener('scroll', updateOffsets);
+            window.addEventListener('resize', updateOffsets);
+        }
+
+        // Finnhub WebSocket
+        const FINNHUB_TOKEN = 'd591v51r01qvj8ijj1vgd591v51r01qvj8ijj200';
+        let finnhubSocket = null;
+        const fhSymbols = {
+            'MES': 'MES',
+            'ES':  'ES',
+            'MNQ': 'MNQ',
+            'NQ':  'NQ'
+        }; // 這裡實際符號需依 Finnhub 支援情況調整[web:56]
+
+        function toggleFinnhub() {
+            const btn = document.getElementById('fh_btn');
+            const statusEl = document.getElementById('live_price_status');
+
+            if (!FINNHUB_TOKEN) {
+                alert('Finnhub token 為空，請確認程式碼內 FINNHUB_TOKEN。');
+                return;
+            }
+
+            if (finnhubSocket && finnhubSocket.readyState === 1) {
+                finnhubSocket.close();
+                btn.textContent = '🟢 啟即時價';
+                statusEl.textContent = '離線';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            const url = 'wss://ws.finnhub.io?token=' + FINNHUB_TOKEN;
+            finnhubSocket = new WebSocket(url);
+
+            finnhubSocket.onopen = () => {
+                const contract = document.getElementById('contract').value;
+                const symbol = fhSymbols[contract];
+                if (symbol) {
+                    finnhubSocket.send(JSON.stringify({ type: 'subscribe', symbol }));
+                    console.log('Finnhub 訂閱:', symbol);
+                }
+                btn.textContent = '🔴 斷即時價';
+                statusEl.textContent = '連線中...';
+                statusEl.style.color = '#00ff88';
+            };
+
+            finnhubSocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'trade' && data.data && data.data.length) {
+                        const trade = data.data[0];
+                        const lastPrice = trade.p;
+                        const priceEl = document.getElementById('price');
+                        priceEl.value = lastPrice.toFixed(1);
+                        statusEl.textContent = '🟢 ' + lastPrice.toFixed(2);
+                        statusEl.style.color = '#00ff88';
+                        calculateSL();
+                    }
+                } catch (e) {
+                    console.error('Finnhub 訊息解析錯誤:', e);
+                }
+            };
+
+            finnhubSocket.onclose = () => {
+                console.log('Finnhub 斷線');
+                btn.textContent = '🟢 啟即時價';
+                statusEl.textContent = '離線';
+                statusEl.style.color = '#ff6b6b';
+            };
+
+            finnhubSocket.onerror = (err) => {
+                console.error('Finnhub 錯誤:', err);
+                statusEl.textContent = '連線錯誤';
+                statusEl.style.color = '#ff6b6b';
+            };
+        }
+
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'contract' && finnhubSocket && finnhubSocket.readyState === 1) {
+                const contract = document.getElementById('contract').value;
+                const symbol = fhSymbols[contract];
+                if (symbol) {
+                    finnhubSocket.send(JSON.stringify({ type: 'subscribe', symbol }));
+                    console.log('Finnhub 切換訂閱:', symbol);
+                }
+            }
+        });
+
+        document.addEventListener('input', updateBufferRecommendation);
+        document.addEventListener('change', updateBufferRecommendation);
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') calculateSL();
+        });
+
+        updatePointValue();
+        updateBufferRecommendation();
+        initCanvasInteraction();
+    </script>
+</body>
+</html>
