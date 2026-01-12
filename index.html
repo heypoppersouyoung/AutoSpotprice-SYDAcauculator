@@ -719,11 +719,12 @@
         // Finnhub WebSocket
         const FINNHUB_TOKEN = 'd591v51r01qvj8ijj1vgd591v51r01qvj8ijj200';
         let finnhubSocket = null;
-        const fhSymbols = {
-            'MES': 'MES',
-            'ES':  'ES',
-            'MNQ': 'MNQ',
-            'NQ':  'NQ'
+       const fhSymbols = {
+    'MES': 'AAPL',              // Apple 股票
+    'ES':  'MSFT',              // 微軟
+    'MNQ': 'BINANCE:BTCUSDT',   // 幣安 BTC/USDT 現貨
+    'NQ':  'OANDA:EUR_USD'      // OANDA 歐元/美元
+};
         }; // 這裡實際符號需依 Finnhub 支援情況調整[web:56]
 
         function toggleFinnhub() {
@@ -812,3 +813,4 @@
     </script>
 </body>
 </html>
+
